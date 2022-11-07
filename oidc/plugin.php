@@ -19,6 +19,7 @@ $oidc = new Jumbojett\OpenIDConnectClient(
 			OIDC_CLIENT_NAME,
 			OIDC_CLIENT_SECRET
 		);
+$oidc->addScope(array("openid", "email", "profile"));
 
 if( defined( 'OIDC_REDIRECT_URL' ) ) $oidc->setRedirectUrl(OIDC_REDIRECT_URL);
 
@@ -37,14 +38,14 @@ function oidc_auth( $valid ) {
 		global $oidc;
 		$oidc->authenticate();
 		if ( OIDC_BYPASS_YOURLS_AUTH ) {
-			$user = $oidc->requestUserInfo('preferred_username');
+			$user = $oidc->requestUserInfo('email');
 			if ( $user ) {
 				yourls_set_user($user);
 				oidc_cookie_login($user);
 				$valid = true;
 			}
 		} else {
-			$id = $oidc->requestUserInfo('sub');
+			$id = $oidc->requestUserInfo('email');
 			if ( $id ) {
 				global $oidc_profiles;
 				foreach( $oidc_profiles as $user => $hash) {
@@ -56,6 +57,9 @@ function oidc_auth( $valid ) {
 			}
 		}
 	}
+	if (!$valid) {
+		yourls_redirect(YOURLS_SITE."/admin/");	
+	}	
 	return $valid;
 }
 
@@ -72,8 +76,12 @@ yourls_add_action( 'logout', 'oidc_logout' );
 function oidc_logout() {
 	yourls_store_cookie( null );
 	oidc_cookie_logout();
-	global $oidc;
-	$oidc->signOut( null, YOURLS_SITE );
+	try {
+		global $oidc;
+		$oidc->signOut( null, YOURLS_SITE );
+	} catch (Exception $e) {
+		yourls_redirect(YOURLS_SITE."/admin/");
+	}
 }
 
 function oidc_cookie_logout(){
