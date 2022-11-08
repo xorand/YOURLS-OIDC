@@ -36,25 +36,29 @@ function oidc_auth( $valid ) {
         }
 	if ( !yourls_is_API() && !$valid ) {
 		global $oidc;
-		$oidc->authenticate();
-		if ( OIDC_BYPASS_YOURLS_AUTH ) {
-			$user = $oidc->requestUserInfo('email');
-			if ( $user ) {
-				yourls_set_user($user);
-				oidc_cookie_login($user);
-				$valid = true;
-			}
-		} else {
-			$id = $oidc->requestUserInfo('email');
-			if ( $id ) {
-				global $oidc_profiles;
-				foreach( $oidc_profiles as $user => $hash) {
-					if( $id == $hash ) {
-						yourls_set_user($user);
-						$valid = true;
+		try {
+			$oidc->authenticate();
+			if ( OIDC_BYPASS_YOURLS_AUTH ) {
+				$user = $oidc->requestUserInfo('email');
+				if ( $user ) {
+					yourls_set_user($user);
+					oidc_cookie_login($user);
+					$valid = true;
+				}
+			} else {
+				$id = $oidc->requestUserInfo('email');
+				if ( $id ) {
+					global $oidc_profiles;
+					foreach( $oidc_profiles as $user => $hash) {
+						if( $id == $hash ) {
+							yourls_set_user($user);
+							$valid = true;
+						}
 					}
 				}
 			}
+		} catch (Exception $e) {
+			$valid = false;
 		}
 	}
 	if (!$valid) {
